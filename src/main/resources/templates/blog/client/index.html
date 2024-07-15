@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- 引用header模板中的代码块 -->
+<head th:replace="blog/client/header::head-fragment"></head>
+<body id="blog">
+<!-- 引用header模板中的代码块 -->
+<div th:replace="blog/client/header::nav-fragment"></div>
+<!-- 引用header模板中的代码块 -->
+<div th:replace="blog/client/header::header-fragment"></div>
+<div class="am-g am-g-fixed blog-fixed">
+	<!-- 引用 blog-list 模板中的代码块，显示博客列表 -->
+    <div th:replace="blog/client/blog-list::blog-list-fragment"></div>
+    <!-- 引用 side 模板中的代码块，显示右边的侧边栏（搜索文章、热门标签、点击最多） -->
+    <div th:replace="blog/client/side::side-fragment"></div>
+</div>
+<!-- 引用footer模板中的代码块 -->
+<footer th:replace="blog/client/footer::footer-fragment"></footer>
+</body>
+<script th:src="@{/blog/plugins/jquery/jquery.min.js}"></script>
+<script th:src="@{/blog/plugins/search/search.js}"></script>
+</html>

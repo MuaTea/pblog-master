@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章管理</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+    <style>
+        .avatar-uploader .el-upload {
+            border: 1px dashed #d9d9d9;
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .avatar-uploader .el-upload:hover {
+            border-color: #409EFF;
+        }
+
+        .avatar-uploader-icon {
+            font-size: 28px;
+            color: #8c939d;
+            width: 178px;
+            height: 178px;
+            line-height: 178px;
+            text-align: center;
+        }
+
+        .avatar {
+            width: 178px;
+            height: 178px;
+            display: block;
+        }
+
+        @keyframes rotate-border-color {
+            0% {
+                border-color: #ffcc00;
+            }
+            25% {
+                border-color: #ff3300;
+            }
+            50% {
+                border-color: #33cc33;
+            }
+            75% {
+                border-color: #0066ff;
+            }
+            100% {
+                border-color: #ffcc00;
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            transition: border-color 1s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            animation: rotate-border-color 3s linear infinite;
+        }
+
+        #markdown-editor {
+            border-top: 1px solid #ddd;
+            border-left: none;
+            border-right: none;
+            border-bottom: none;
+            padding: 20px;
+            width: 100%;
+            height: 400px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        .editor-toolbar {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .CodeMirror {
+            height: calc(100% - 50px);
+            border-radius: 0 0 8px 8px;
+        }
+
+        .CodeMirror-scroll {
+            border: 1px solid transparent;
+            transition: border-color 1s linear;
+        }
+
+        .CodeMirror-focused .CodeMirror-scroll {
+            border-color: #ffcc00;
+            animation: rotate-border-color 5s linear infinite;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0, 0, 0);
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="file"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .form-group input[type="file"] {
+            padding: 3px;
+        }
+
+        .form-group textarea {
+            height: 100px;
+        }
+
+        .form-group select {
+            height: 35px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <h1>文章管理</h1>
+    <form id="blogForm" th:action="@{/user/blog/publish}" th:object="${blog}" method="post">
+        <div>
+            <label for="blogTitle">标题:</label>
+            <input type="text" id="blogTitle" th:field="*{blogTitle}" placeholder="请输入标题" required>
+        </div>
+        <div>
+            <textarea id="markdown-editor" th:field="*{blogContent}" placeholder="在此输入博客内容..."></textarea>
+            <input type="hidden" name="blogTags" :value="blogTags">
+            <input type="hidden" name="blogCategoryName" :value="blogCategoryName">
+            <input type="hidden" name="blogCover" :value="blogCover">
+        </div>
+        <el-button type="primary" @click="openModal">添加文章信息</el-button>
+        <!-- Modal -->
+        <el-dialog :visible.sync="dialogVisible" title="文章信息">
+            <div class="form-group">
+                <label for="blogTags">标签:</label>
+                <el-select v-model="blogTags" placeholder="请选择标签">
+                    <el-option v-for="tag in tags" :key="tag.tagId" :label="tag.tagName" :value="tag.tagName"></el-option>
+                </el-select>
+                <input type="hidden" name="tags" :value="blogTags">
+            </div>
+            <div class="form-group">
+                <label for="blogCover">封面图:</label>
+                <el-upload
+                        class="avatar-uploader"
+                        action="/upload/cover"
+                        :show-file-list="false"
+                        :on-success="handleAvatarSuccess">
+                    <img v-if="blogCover" :src="blogCover" class="avatar">
+                    <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+                </el-upload>
+            </div>
+            <div class="form-group">
+                <label for="blogCategory">分类专栏:</label>
+                <el-select v-model="blogCategoryName" placeholder="请选择分类">
+                    <el-option v-for="item in blogCategoryNameList"
+                               :key="item.categoryId"
+                               :label="item.categoryName"
+                               :value="item.categoryName+','+item.categoryId"></el-option>
+                </el-select>
+                <input type="hidden" name="categories" :value="blogCategoryName">
+            </div>
+            <div style="text-align: right; margin-top: 15px;">
+                <el-button @click="saveDraft">保存为草稿</el-button>
+                <el-button @click="schedulePost">定时发布</el-button>
+                <el-button type="primary" @click="submitForm">发布文章</el-button>
+            </div>
+        </el-dialog>
+    </form>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            dialogVisible: false,
+            tags: [],
+            blogTags: [],
+            blogCategoryName: "",
+            blogCategoryNameList: [],
+            blogTags: '',
+            blogCover: '',
+            blogCategoryId: ''
+        },
+        methods: {
+            getTagList() {
+                axios.get("/tag/list").then(response => {
+                    this.tags = response.data.data
+                })
+            },
+            openModal() {
+                this.dialogVisible = true;
+                // 获取分类列表的数据
+                axios.get("/user/category/info").then(response => {
+                    this.blogCategoryNameList = response.data.data
+                })
+                this.getTagList()
+            },
+            handleAvatarSuccess(res, file) {
+                this.blogCover = `/upload/img?name=${res}`;
+            },
+            saveDraft() {
+                this.$message.info("保存为草稿");
+                this.dialogVisible = false;
+            },
+            schedulePost() {
+                const scheduleTime = prompt("请输入定时发布的时间（格式：YYYY-MM-DD HH:mm:ss）");
+                if (scheduleTime) {
+                    this.$message.info("定时发布: " + scheduleTime);
+                }
+                this.dialogVisible = false;
+            },
+            submitForm() {
+                // 这里直接通过表单的 submit 方法来提交表单
+                document.getElementById('blogForm').submit();
+            }
+        },
+        created() {
+            var easyMDE = new EasyMDE({element: document.getElementById('markdown-editor')});
+            this.getTagList()
+        }
+    });
+</script>
+</body>
+</html>

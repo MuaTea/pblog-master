@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>文章列表</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .el-card {
+            margin: 20px;
+        }
+
+        .el-pagination {
+            margin: 20px;
+        }
+
+        .avatar-uploader .el-upload {
+            border: 1px dashed #d9d9d9;
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .avatar-uploader .el-upload:hover {
+            border-color: #409EFF;
+        }
+
+        .avatar-uploader-icon {
+            font-size: 28px;
+            color: #8c939d;
+            width: 178px;
+            height: 178px;
+            line-height: 178px;
+            text-align: center;
+        }
+
+        .avatar {
+            width: 178px;
+            height: 178px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <el-card>
+        <!-- 搜索框 -->
+        <el-input
+                v-model="blogTitle"
+                placeholder="请输入关键词"
+                clearable
+                @clear="handleSearch"
+                style="margin-bottom: 20px; width: 300px;"
+        ></el-input>
+        <el-button @click="handleSearch">搜索</el-button>
+
+        <!-- 表格 -->
+        <el-table :data="blogList" style="width: 100%" fit>
+            <el-table-column prop="blogId" label="ID" width="80"></el-table-column>
+            <el-table-column prop="blogTitle" label="标题"></el-table-column>
+            <el-table-column prop="blogCategoryName" label="分类"></el-table-column>
+            <el-table-column prop="blogViews" label="阅读量" width="100"></el-table-column>
+            <el-table-column prop="blogCoverImage" label="封面" align="center">
+                <template slot-scope="scope">
+                    <el-image
+                            style="width: 60px; height: 60px"
+                            :src="getImageUrl(scope.row.blogCoverImage)"
+                            :preview-src-list="[scope.row.blogCoverImage]"
+                            fit="cover"></el-image>
+                </template>
+            </el-table-column>
+            <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
+            <el-table-column fixed="right" label="操作" width="150">
+                <template slot-scope="scope">
+                    <el-button @click="handleEdit(scope.row)" type="primary" size="mini"
+                               icon="el-icon-edit"></el-button>
+                    <el-button @click="handleDelete(scope.row)" type="danger" size="mini"
+                               icon="el-icon-delete"></el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+
+        <!-- 分页 -->
+        <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="pageNum"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+        </el-pagination>
+    </el-card>
+
+    <!-- 编辑弹窗 -->
+    <el-dialog :visible.sync="editDialogVisible" title="编辑博客">
+        <el-form :model="editBlog" label-width="80px">
+            <el-form-item label="标题">
+                <el-input v-model="editBlog.blogTitle"></el-input>
+            </el-form-item>
+            <el-form-item label="分类">
+                <el-select v-model="editBlog.blogCategoryName" placeholder="请选择分类">
+                    <el-option v-for="tag in tags"
+                               :key="tag.tagId" :label="tag.tagName"
+                               :value="tag.tagName"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="阅读量">
+                <el-input v-model="editBlog.blogViews"></el-input>
+            </el-form-item>
+            <!-- editBlog.blogCoverImage -->
+            <el-form-item label="封面图">
+                <el-upload
+                        class="avatar-uploader"
+                        action="/upload/cover"
+                        :show-file-list="false"
+                        :on-success="handleAvatarSuccess">
+                    <img v-if="editBlog.blogCoverImage" :src="editBlog.blogCoverImage" class="avatar">
+                    <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+                </el-upload>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button @click="editDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveEdit">保存</el-button>
+        </div>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: "#app",
+        data() {
+            return {
+                blogTitle: '',
+                pageNum: 1,
+                pageSize: 5,
+                blogList: [],
+                total: 0,
+                editDialogVisible: false,
+                editBlog: {
+                    blogId: '',
+                    blogTitle: '',
+                    blogCategoryName: '',
+                    blogViews: '',
+                    blogCoverImage: ''
+                },
+                tags: []
+            };
+        },
+        created() {
+            this.handleSearch();
+            this.getTagList();
+        },
+        methods: {
+            getImageUrl(photoPath) {
+                return photoPath;
+            },
+            handleAvatarSuccess(res, file) {
+                this.editBlog.blogCoverImage = `/upload/img?name=${res}`;
+            },
+            async handleSearch() {
+                const res = await axios.get("/user/blogs/list", {
+                    params: {
+                        pageNum: this.pageNum,
+                        pageSize: this.pageSize,
+                        blogTitle: this.blogTitle
+                    }
+                });
+                this.blogList = res.data.data.list;
+                this.total = res.data.data.total;
+            },
+            handleSizeChange(val) {
+                this.pageSize = val;
+                this.handleSearch();
+            },
+            handleCurrentChange(val) {
+                this.pageNum = val;
+                this.handleSearch();
+            },
+            handleEdit(blog) {
+                this.editBlog = {...blog};
+                this.editDialogVisible = true;
+            },
+            async saveEdit() {
+                const res = await axios.post(`/user/blogs/update`, this.editBlog);
+                if (res.data.code === 200) {
+                    this.$message.success('博客更新成功');
+                    this.editDialogVisible = false;
+                    this.handleSearch();
+                } else {
+                    this.$message.error('博客更新失败');
+                }
+            },
+            getTagList() {
+                axios.get("/tag/list").then(response => {
+                    this.tags = response.data.data
+                })
+            },
+            handleDelete(blog) {
+                this.$confirm('此操作将永久删除该博客, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(async () => {
+                    const res = await axios.delete(`/user/blogs/${blog.blogId}`);
+                    if (res.data.code === 200) {
+                        this.$message.success('删除成功');
+                        this.handleSearch();
+                    } else {
+                        this.$message.error('删除失败');
+                    }
+                })
+            }
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>博客标签页统计</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .tag {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+
+        .tag:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <h1>博客标签页统计</h1>
+    <div class="tags-container">
+        <span class="tag" v-for="tag in tagList"
+              :style="'background: linear-gradient(to right, ' + getRandomGradient() + '); font-size: ' + getRandomSize() + 'px;'"
+              @click="openEditDialog(tag)">
+            {{ tag.tagName }}
+        </span>
+    </div>
+    <el-dialog :visible.sync="dialogVisible" title="编辑标签">
+        <el-form :model="currentTag">
+            <el-form-item label="标签名称">
+                <el-input v-model="currentTag.tagName"></el-input>
+            </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveTag">保存</el-button>
+            <el-button type="danger" @click="deleteTag">删除</el-button>
+        </span>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            tagList: [],
+            dialogVisible: false,
+            currentTag: { tagName: '' }
+        },
+        created() {
+            this.getAllTags();
+        },
+        methods: {
+            async getAllTags() {
+                const res = await axios.get("/tag/list")
+                console.log(res)
+                this.tagList = res.data.data
+            },
+            getRandomColor() {
+                return '#' + Math.floor(Math.random() * 16777215).toString(16);
+            },
+            getRandomGradient() {
+                const color1 = this.getRandomColor();
+                const color2 = this.getRandomColor();
+                return `${color1}, ${color2}`;
+            },
+            getRandomSize() {
+                return Math.floor(Math.random() * 12) + 18; // Random size between 18px to 30px
+            },
+            openEditDialog(tag) {
+                this.currentTag = Object.assign({}, tag);
+                this.dialogVisible = true;
+            },
+            async saveTag() {
+                // 保存标签的逻辑
+                await axios.post(`/tag/update`, this.currentTag);
+                this.getAllTags();
+                this.dialogVisible = false;
+            },
+            async deleteTag() {
+                console.log("this.currentTag",this.currentTag)
+                // 删除标签的逻辑
+               const res= await axios.post(`/tag/remove/${this.currentTag.tagId}`);
+               if (res.data.code ===200){
+                   this.getAllTags();
+                   this.dialogVisible = false;
+                   this.$message.success('删除成功');
+               }else {
+                   this.$message.error('删除失败');
+               }
+            }
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>博客评论管理</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .el-pagination {
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <el-card>
+        <el-input v-model="searchText" placeholder="请输入邮箱" @input="fetchComments"
+                  style="width: 30%;margin:20px"></el-input>
+        <el-button @click="fetchComments"> 搜索</el-button>
+        <el-table :data="comments" style="width: 100%">
+            <el-table-column prop="commentId" label="ID" width="180"></el-table-column>
+            <el-table-column prop="email" label="邮箱"></el-table-column>
+            <el-table-column prop="commentBody" label="评论内容"></el-table-column>
+            <el-table-column prop="commentCreateTime" label="评论时间"></el-table-column>
+            <el-table-column prop="replyBody" label="回复内容"></el-table-column>
+            <el-table-column prop="replyCreateTime" label="评论时间"></el-table-column>
+<!--            <el-table-column label="操作">-->
+<!--                <template slot-scope="scope">-->
+<!--                    <el-button @click="editComment(scope.row)" type="primary" size="small">编辑</el-button>-->
+<!--                    <el-button @click="deleteComment(scope.row.commentId)" type="danger" size="small">删除</el-button>-->
+<!--                </template>-->
+<!--            </el-table-column>-->
+        </el-table>
+        <!-- 分页 -->
+        <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+        </el-pagination>
+
+        <!-- 编辑评论弹窗 -->
+        <el-dialog title="编辑评论" :visible.sync="editDialogVisible">
+            <el-form :model="editForm">
+                <el-form-item label="邮箱">
+                    <el-input v-model="editForm.email"></el-input>
+                </el-form-item>
+                <el-form-item label="评论内容">
+                    <el-input v-model="editForm.commentBody"></el-input>
+                </el-form-item>
+                <el-form-item label="回复内容">
+                    <el-input v-model="editForm.replyBody"></el-input>
+                </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+            <el-button @click="editDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="updateComment">确定</el-button>
+        </span>
+        </el-dialog>
+    </el-card>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                comments: [],
+                total: 0,
+                pageSize: 10,
+                currentPage: 1,
+                searchText: '',
+                editDialogVisible: false,
+                editForm: {
+                    commentId: '',
+                    email: '',
+                    commentBody: '',
+                    replyBody: ''
+                }
+            };
+        },
+        mounted() {
+            this.fetchComments();
+        },
+        methods: {
+            handleSizeChange(val) {
+                this.pageSize = val;
+                this.fetchComments();
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val;
+                this.fetchComments();
+            },
+            fetchComments() {
+                axios.get(`/user/comments/list`, {
+                    params: {
+                        page: this.currentPage,
+                        size: this.pageSize,
+                        searchText: this.searchText
+                    }
+                }).then(response => {
+                    console.log(response);
+                    this.comments = response.data.data.list;
+                    this.total = response.data.data.total;
+                });
+            },
+            editComment(comment) {
+                this.editForm = {...comment};
+                this.editDialogVisible = true;
+            },
+            updateComment() {
+                axios.put(`/api/comments/${this.editForm.commentId}`, this.editForm).then(() => {
+                    this.fetchComments();
+                    this.editDialogVisible = false;
+                });
+            },
+            deleteComment(commentId) {
+                axios.delete(`/api/comments/${commentId}`).then(() => {
+                    this.fetchComments();
+                });
+            }
+        }
+    });
+</script>
+</body>
+</html>
